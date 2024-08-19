@@ -1,0 +1,22 @@
+
+1) Регистрация user  http://127.0.0.1:8000/auth/users/ -- высылает письмо на почту
+Поля ( username , password, re_password, email) ---- Post запрос
+
+3)Авторизация на сайте http://127.0.0.1:8000/auth/token/login/ -- получим токен который нужно всталять при каждом запросе в заголовки
+Поля (username, password ) ---- Post запрос
+
+4)Разлогинится с сайта http://127.0.0.1:8000/auth/token/logout/
+Поля (username, password ,token)Post запрос
+
+5) Выслать письмо на почту (забыли пароль)   http://127.0.0.1:8000/auth/users/reset_password/
+Поля ( email ) ---- Post запрос
+
+6) После открытия ссылкы с формой данные нужно отправить на этот эндпоинт   http://127.0.0.1:8000/auth/users/reset_password_confirm/
+
+Поля ( new_password, re_new_password ,uid, token ) ---- Post запрос
+
+7) изменить пароль  http://127.0.0.1:8000/auth/users/set_password/
+Поля ( new_password, re_new_password, current_password(старый пароль) ) ---- Post запрос
+
+
+8)http://localhost:8000/accounts/login/
