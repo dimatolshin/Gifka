@@ -29,12 +29,13 @@ SECRET_KEY = Secret_Key
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['188.68.221.182','bwcreatorhub.com','www.bwcreatorhub.com','127.0.0.1',]
 
 # Application definition
 
 INSTALLED_APPS = [
     'main',
+    'corsheaders',
     'imgix',
     'django.contrib.sites',
     'allauth',
@@ -62,6 +63,7 @@ AUTHENTICATION_BACKENDS = (
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'allauth.account.middleware.AccountMiddleware',
@@ -71,7 +73,11 @@ MIDDLEWARE = [
 ]
 
 ROOT_URLCONF = 'mysite.urls'
-
+CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOWED_ORIGINS = [
+    "http://188.68.221.182"
+    "https://bwcreatorhub.com",
+]
 
 
 SOCIALACCOUNT_PROVIDERS = {
