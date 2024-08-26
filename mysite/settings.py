@@ -75,7 +75,7 @@ MIDDLEWARE = [
 ROOT_URLCONF = 'mysite.urls'
 CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOWED_ORIGINS = [
-    "http://188.68.221.182"
+    "http://188.68.221.182",
     "https://bwcreatorhub.com",
 ]
 
@@ -182,6 +182,7 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.0/howto/static-files/
 
 STATIC_URL = 'static/'
+STATIC_ROOT = os.path.join(BASE_DIR, 'static')
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
