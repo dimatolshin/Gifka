@@ -89,3 +89,5 @@ class CustomPasswordResetConfirmView(PasswordResetConfirmView):
         context['uid'] = self.kwargs['uid']
         context['token'] = self.kwargs['token']
         return context
+
+

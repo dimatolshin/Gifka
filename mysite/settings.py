@@ -28,7 +28,7 @@ SECRET_KEY = Secret_Key
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
-
+CSRF_TRUSTED_ORIGINS = ['https://bwcreatorhub.com']
 ALLOWED_HOSTS = ['188.68.221.182','bwcreatorhub.com','www.bwcreatorhub.com','127.0.0.1',]
 
 # Application definition
