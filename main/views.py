@@ -73,7 +73,7 @@ class CustomActivationView(APIView):
             settings = LazySettings()
             token = utils.login_user(self.request, user)
             token_serializer_class = settings.SERIALIZERS.token
-            return redirect('https://github.com/dimatolshin/Helping/blob/new_branch_Dima/requirements.txt')
+            return redirect('https://bwcreatorhub.com/auth')
             # return Response(data=token_serializer_class(token).data, status=status.HTTP_200_OK)
 
         else:

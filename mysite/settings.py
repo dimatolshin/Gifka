@@ -80,26 +80,6 @@ CORS_ALLOWED_ORIGINS = [
 ]
 
 
-SOCIALACCOUNT_PROVIDERS = {
-    'google': {
-        'SCOPE': [
-            'profile',
-            'email',
-        ],
-        'AUTH_PARAMS': {
-            'access_type': 'online',
-        },
-        'OAUTH_PKCE_ENABLED': True,
-        'APP': {
-            'client_id': f'{GOOGLE_CLIENT_ID}',
-            'secret': f'{GOOGLE_CLIENT_SECRET}',
-            'key': ''
-        }
-    }
-}
-
-LOGIN_REDIRECT_URL = '/'
-ACCOUNT_LOGOUT_REDIRECT_URL = '/'
 
 TEMPLATES = [
     {
@@ -192,9 +172,9 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 DJOSER = {
-    'PASSWORD_RESET_CONFIRM_URL': 'api/reset/{uid}/{token}',
+    'PASSWORD_RESET_CONFIRM_URL': 'https://bwcreatorhub.com/api/reset/{uid}/{token}',
     'USERNAME_RESET_CONFIRM_URL': '#/username/reset/confirm/{uid}/{token}',
-    'ACTIVATION_URL': 'api/activate/{uid}/{token}',
+    'ACTIVATION_URL': 'https://bwcreatorhub.com/api/activate/{uid}/{token}',
     'SEND_ACTIVATION_EMAIL': True,
     'SERIALIZERS': {},
     'USER_CREATE_PASSWORD_RETYPE': True,
