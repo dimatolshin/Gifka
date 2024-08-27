@@ -80,8 +80,6 @@ class CustomActivationView(APIView):
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-
-
 # Атоматически добавляет uid и токен (сборс пароля ссылка )
 class CustomPasswordResetConfirmView(PasswordResetConfirmView):
     def get_context_data(self, **kwargs):
@@ -91,3 +89,64 @@ class CustomPasswordResetConfirmView(PasswordResetConfirmView):
         return context
 
 
+from django.http import FileResponse
+from PIL import Image, ImageDraw, ImageFont, ImageSequence
+import os
+from django.conf import settings
+
+
+
+
+class Add_Text_Gif(APIView):
+    def post(self, request):
+        # Открываем существующий GIF
+        original_gif = Image.open('/home/dima_tolshin/PycharmProjects/Gif/mysite/media/3dLI.gif')
+
+        # Создаем список для хранения кадров с текстом
+        frames_with_text = []
+
+        # Загружаем шрифт (можно заменить на свой)
+        try:
+            font = ImageFont.truetype("arial.ttf", 67)  # Путь к вашему шрифту и размер шрифта
+        except IOError:
+            font = ImageFont.load_default()
+
+        # Перебираем все кадры в GIF
+        for frame in ImageSequence.Iterator(original_gif):
+            frame = frame.convert("RGBA")  # Преобразуем в формат RGBA для добавления текста
+            draw = ImageDraw.Draw(frame)
+
+            # Определяем позицию текста
+            text_position = (200, 350)  # Можно изменить на нужные координаты
+            draw.text(text_position, request.data.get('text', ''), font=font, fill=request.data.get('color', 'black'))
+
+            frames_with_text.append(frame)
+
+        # Получаем следующий номер файла
+        def get_next_file_number(directory, prefix, extension):
+            existing_files = os.listdir(directory)
+            max_number = 0
+            for filename in existing_files:
+                if filename.startswith(prefix) and filename.endswith(extension):
+                    try:
+                        number = int(filename[len(prefix):-len(extension)])
+                        if number > max_number:
+                            max_number = number
+                    except ValueError:
+                        continue
+            return max_number + 1
+
+        media_directory = settings.MEDIA_ROOT
+        prefix = ""
+        extension = ".gif"
+        next_file_number = get_next_file_number(media_directory, prefix, extension)
+
+        # Сохраняем новый GIF с добавленным текстом
+        output_filename = f"{next_file_number}{extension}"
+        output_path = os.path.join(media_directory, output_filename)
+        frames_with_text[0].save(output_path, format='GIF',
+                                 append_images=frames_with_text[1:], save_all=True,
+                                 duration=original_gif.info['duration'], loop=0)
+
+        # Отправляем файл как ответ
+        return FileResponse(open(output_path, 'rb'), content_type='image/gif')
