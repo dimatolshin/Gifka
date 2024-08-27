@@ -100,7 +100,7 @@ from django.conf import settings
 class Add_Text_Gif(APIView):
     def post(self, request):
         # Открываем существующий GIF
-        original_gif = Image.open('/home/dima_tolshin/PycharmProjects/Gif/mysite/media/3dLI.gif')
+        original_gif = Image.open('/root/Gifka/media/3dLI.gif')
 
         # Создаем список для хранения кадров с текстом
         frames_with_text = []
