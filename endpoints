@@ -6,7 +6,7 @@
 Поля (username, password ) ---- Post запрос
 
 4)Разлогинится с сайта http://127.0.0.1:8000/auth/token/logout/
-Поля (username, password ,token)Post запрос
+Поля (token)Post запрос
 
 5) Выслать письмо на почту (забыли пароль)   http://127.0.0.1:8000/auth/users/reset_password/
 Поля ( email ) ---- Post запрос
