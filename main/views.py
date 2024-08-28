@@ -74,7 +74,7 @@ class CustomActivationView(APIView):
             settings = LazySettings()
             token = utils.login_user(self.request, user)
             token_serializer_class = settings.SERIALIZERS.token
-            return redirect('https://bwcreatorhub.com/auth')
+            return redirect('https://bwcreatorhub.com/auths')
             # return Response(data=token_serializer_class(token).data, status=status.HTTP_200_OK)
 
         else:
@@ -106,7 +106,7 @@ class Add_Text_Gif(APIView):
 
         # Загружаем шрифт (можно заменить на свой)
         try:
-            font = ImageFont.truetype("arial.ttf", 22)  # Путь к вашему шрифту и размер шрифта
+            font = ImageFont.truetype(size=40, encoding='unic')  # Путь к вашему шрифту и размер шрифта
         except IOError:
             font = ImageFont.load_default()
 
