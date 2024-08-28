@@ -10,5 +10,6 @@ urlpatterns = [
     path('create_gif/', Add_Text_Gif.as_view(), name='add_text_info_gif'),
     path('google_auth/', GoogleAuth.as_view()),
     path('create_promokode/',CreateGifAndProfile.as_view()),
+    path('create_statick_gif/', AddTextToImage.as_view()),
 
 ]

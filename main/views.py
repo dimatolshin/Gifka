@@ -185,6 +185,39 @@ class Add_Text_Gif(APIView):
         })
 
 
+class AddTextToImage(APIView):
+    def post(self, request):
+        token_key = request.data.get('token')
+        try:
+            token = Token.objects.get(key=token_key)
+        except Token.DoesNotExist:
+            return Response({'error': 'Неправильный токен'}, status=status.HTTP_400_BAD_REQUEST)
+        user = token.user
+        # Открываем изображение
+        image_path = '/root/Gifka/media/1.jpg'
+        original_image = Image.open(image_path)
+
+        # Загружаем шрифт (можно заменить на свой)
+        try:
+            font = ImageFont.truetype("arial.ttf", size=40, encoding='unic')  # Путь к вашему шрифту и размер шрифта
+        except IOError:
+            font = ImageFont.load_default()
+
+        # Добавляем текст к изображению
+        draw = ImageDraw.Draw(original_image)
+        text = f"{user.profile.promokode}"  # Ваш текст
+        text_position = (785, 320)  # Позиция текста на изображении
+        draw.text(text_position, text, font=font, fill="white")
+
+        # Сохраняем изображение с добавленным текстом
+        output_filename = "modified_image.jpg"  # Измените на желаемое имя файла
+        output_path = os.path.join(settings.MEDIA_ROOT, output_filename)
+        original_image.save(output_path, format='JPEG')
+
+        # Отправляем файл как ответ
+        return FileResponse(open(output_path, 'rb'), content_type='image/jpeg')
+
+
 class GoogleAuth(APIView):
     def post(self, request):
         email = request.data['email']
