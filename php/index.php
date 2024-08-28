@@ -5,9 +5,9 @@
 	$dbuser = 'root';
 	$dbpass = '';
 
-	$err_level = error_reporting(0);
+	$error_reporting(E_ALL);
 	$db = new mysqli($dbhost, $dbuser, $dbpass, $dbname);
-	error_reporting($err_level);
+	ini_set('display_errors', 1);
 	if ($db->affected_rows === 0) {
 		$db->query('SET NAMES "utf8";');
 		$db->query('SET CHARACTER SET "utf8";');
