@@ -193,21 +193,47 @@ class AddTextToImage(APIView):
         except Token.DoesNotExist:
             return Response({'error': 'Неправильный токен'}, status=status.HTTP_400_BAD_REQUEST)
         user = token.user
+
         # Открываем изображение
         image_path = '/root/Gifka/media/1.jpg'
         original_image = Image.open(image_path)
 
         # Загружаем шрифт (можно заменить на свой)
         try:
-            font = ImageFont.truetype("arial.ttf", size=50, encoding='unic')  # Путь к вашему шрифту и размер шрифта
+            font_path = "arial.ttf"  # Путь к вашему шрифту
+            font_size = 65
+            font = ImageFont.truetype(font_path,  font_size, encoding='unic')
         except IOError:
             font = ImageFont.load_default()
 
         # Добавляем текст к изображению
         draw = ImageDraw.Draw(original_image)
         text = f"{user.profile.promokode}"  # Ваш текст
-        text_position = (750, 315)  # Позиция текста на изображении
-        draw.text(text_position, text, font=font, fill="white")
+
+        # Определите координаты границ
+        left, top = 720, 300
+        right, bottom = 1030, 360
+
+        # Проверяем размер текста и уменьшаем размер шрифта, если нужно
+        text_bbox = draw.textbbox((0, 0), text, font=font)
+        text_width = text_bbox[2] - text_bbox[0]
+        text_height = text_bbox[3] - text_bbox[1]
+
+        while text_width > (right - left) or text_height > (bottom - top):
+            font_size -= 1
+            if font_size <= 5:  # Минимальный размер шрифта для предотвращения бесконечного цикла
+                break
+            font = ImageFont.truetype(font_path, size=font_size, encoding='unic')
+            text_bbox = draw.textbbox((0, 0), text, font=font)
+            text_width = text_bbox[2] - text_bbox[0]
+            text_height = text_bbox[3] - text_bbox[1]
+
+        # Рассчитываем позицию текста для центрирования
+        text_x = left + (right - left - text_width) // 2
+        text_y = top + (bottom - top - text_height) // 2
+
+        # Нарисуйте текст на изображении в заданных границах
+        draw.text((text_x, text_y), text, font=font, fill="white")
 
         # Сохраняем изображение с добавленным текстом
         output_filename = "modified_image.jpg"  # Измените на желаемое имя файла
@@ -244,7 +270,7 @@ class CreateGifAndProfile(APIView):
         promocode = str(request.data['promocode'])
 
         if len(promocode) > 15:
-            return Response({'error':'Больше 15 символов '})
+            return Response({'error': 'Больше 15 символов '})
 
         # Проверка наличия токена
         try:
