@@ -12,6 +12,7 @@ from djoser.serializers import ActivationSerializer
 from django.contrib.auth.models import User
 from rest_framework.response import Response
 from django.shortcuts import redirect
+from rest_framework.authtoken.models import Token
 
 
 class Index(APIView):
@@ -95,19 +96,17 @@ import os
 from django.conf import settings
 
 
-
-
 class Add_Text_Gif(APIView):
     def post(self, request):
         # Открываем существующий GIF
-        original_gif = Image.open('/root/Gifka/media/3dLI.gif')
+        original_gif = Image.open('/root/Gifka/media/228.gif')
 
         # Создаем список для хранения кадров с текстом
         frames_with_text = []
 
         # Загружаем шрифт (можно заменить на свой)
         try:
-            font = ImageFont.truetype("arial.ttf", 67)  # Путь к вашему шрифту и размер шрифта
+            font = ImageFont.truetype("arial.ttf", 22)  # Путь к вашему шрифту и размер шрифта
         except IOError:
             font = ImageFont.load_default()
 
@@ -117,8 +116,8 @@ class Add_Text_Gif(APIView):
             draw = ImageDraw.Draw(frame)
 
             # Определяем позицию текста
-            text_position = (200, 350)  # Можно изменить на нужные координаты
-            draw.text(text_position, request.data.get('text', ''), font=font, fill=request.data.get('color', 'black'))
+            text_position = (95, 75)  # Можно изменить на нужные координаты
+            draw.text(text_position, request.data.get('text', ''), font=font, fill=request.data.get('color', 'green'))
 
             frames_with_text.append(frame)
 
@@ -150,3 +149,23 @@ class Add_Text_Gif(APIView):
 
         # Отправляем файл как ответ
         return FileResponse(open(output_path, 'rb'), content_type='image/gif')
+
+
+class GoogleAuth(APIView):
+    def post(self, request):
+        email = request.data['email']
+        username = request.data['username']
+        if email and username:
+            try:
+                user = User.objects.get(email=email)
+            except User.DoesNotExist:
+                user = User.objects.create_user(email=email, username=username)
+                user.set_unusable_password()
+                user.is_active = True
+                user.save()
+
+            token, created = Token.objects.get_or_create(user=user)
+            return Response({"message": "Успешный вход через google аккаунт.", "token": token.key},
+                            status=status.HTTP_200_OK)
+        else:
+            return Response({'error': 'Неверные данные'}, status=status.HTTP_404_NOT_FOUND)
