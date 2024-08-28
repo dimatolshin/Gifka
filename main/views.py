@@ -206,7 +206,7 @@ class AddTextToImage(APIView):
         # Добавляем текст к изображению
         draw = ImageDraw.Draw(original_image)
         text = f"{user.profile.promokode}"  # Ваш текст
-        text_position = (785, 320)  # Позиция текста на изображении
+        text_position = (750, 315)  # Позиция текста на изображении
         draw.text(text_position, text, font=font, fill="white")
 
         # Сохраняем изображение с добавленным текстом
