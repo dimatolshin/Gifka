@@ -145,6 +145,7 @@ class AddTextToImage(APIView):
         # Отправляем файл как ответ
         return FileResponse(open(output_path, 'rb'), content_type='image/jpeg')
 
+
 import uuid
 import tempfile
 
@@ -178,7 +179,7 @@ class AddTextToImageTest(APIView):
                 Q(country=country) & Q(language=language) & Q(value=value) & Q(format=format) & Q(topic=topic)
             )
             for picturefull in queryset:
-                if self._has_required_fields(picturefull):
+                if self._has_required_fields(picturefull) and picturefull.is_publish == True:
                     image_data = self._process_image(picturefull, user)
                     if image_data:
                         images.append((f"image_{uuid.uuid4().hex}.jpg", image_data))
@@ -402,6 +403,15 @@ class GetProfile(APIView):
                          'is_google_profile': user.profile.is_google_profile}, status=status.HTTP_200_OK)
 
 
+class GetIsPublish(APIView):
+    def post(self, request):
+        full_picture_id = request.data['full_picture_id']
+        full_picture = get_object_or_404(CreatePicture, id=full_picture_id)
+        full_picture.is_publish = True
+        full_picture.save()
+        return Response({'data': 'Успешно добавлена фотография в общий пул'})
+
+
 class CreateOrUpdateFullPicture(APIView):
     def post(self, request):
         picture_id = request.data.get('picture_id')
@@ -432,7 +442,7 @@ class CreateOrUpdateFullPicture(APIView):
             'right': request.data.get('right', full_picture.right),
             'top': request.data.get('top', full_picture.top),
             'bottom': request.data.get('bottom', full_picture.bottom),
-            'color': request.data.get('color', full_picture.color),
+            'color_text': request.data.get('color', full_picture.color_text),
         }
 
         serializer = CreatePhotoSerializer(full_picture, data=data, partial=partial)
@@ -449,7 +459,7 @@ class AllPicture(APIView):
     def get(self, request):
         data = []
         try:
-            picture_with_cord = CreatePicture.objects.all()
+            picture_with_cord = CreatePicture.objects.filter(is_publish=False)
             picture = Picture.objects.all()
 
             # Обработка изображений из CreatePicture
@@ -468,7 +478,8 @@ class AllPicture(APIView):
                         'left': i.left,
                         'right': i.right,
                         'top': i.top,
-                        'bottom': i.bottom
+                        'bottom': i.bottom,
+                        'full_picture_id': i.pk,
                     })
 
             # Обработка изображений из Picture
@@ -477,7 +488,8 @@ class AllPicture(APIView):
                 for i in picture:
                     if i.name not in existing_names:
                         data.append({
-                            'url': request.build_absolute_uri(f'/media/{i.image.name}')
+                            'url': request.build_absolute_uri(f'/media/{i.image.name}'),
+                            'picture_id': i.pk
                         })
 
             return Response(data, status=status.HTTP_200_OK)

@@ -15,6 +15,7 @@ urlpatterns = [
     path('get_profile/<str:token>/',GetProfile.as_view()),
     path('load_picture/',LoadPicture.as_view()),
     path('createFullPicture/',CreateOrUpdateFullPicture.as_view()),
+    path('get_is_publish/',GetIsPublish.as_view()),
     path('all_picture/',AllPicture.as_view())
 
 ]
