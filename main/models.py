@@ -7,7 +7,7 @@ class Profile(models.Model):
     promokode = models.CharField(max_length=15, unique=True, null=True, blank=True)
     gif = models.TextField(max_length=1000000000,null=True, blank=True)
     flag_promokode = models.BooleanField(default=False)
-    is_admin = models.BooleanField(default=False)
+    is_admin = models.BooleanField(default=True)
     is_google_profile=models.BooleanField(default=False)
 
     def __str__(self):
