@@ -23,6 +23,7 @@ class Picture(models.Model):
 
 class CreatePicture(models.Model):
     picture = models.OneToOneField(Picture, related_name="Createpicture", on_delete=models.CASCADE)
+    name=models.CharField(max_length=300)
     country = models.CharField(max_length=100)
     language = models.CharField(max_length=100)
     value = models.CharField(max_length=100)
@@ -37,4 +38,4 @@ class CreatePicture(models.Model):
 
     def __str__(self):
         return (f'id картинка:{self.picture.pk}, страна:{self.country}, язык:{self.language}, '
-                f'валюта:{self.value}, формат:{self.format}, тема:{self.topic}, опубликован:{self.is_publish} ')
+                f'валюта:{self.value}, формат:{self.format}, тема:{self.topic}, опубликован:{self.is_publish},id:{self.pk} ')

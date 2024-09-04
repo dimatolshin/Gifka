@@ -9,13 +9,13 @@ urlpatterns = [
     path('create_gif/', Add_Text_Gif.as_view(), name='add_text_info_gif'),
     path('google_auth/', GoogleAuth.as_view()),
     path('create_promocode/', CreatePromocodeAndProfile.as_view()),
-    path('create_statick_gif/', AddTextToImage.as_view()),
     path('create_statick_gif_test/',AddTextToImageTest.as_view()),
     # path('create_movie_gif/', CreateMovieGif.as_view()),
     path('get_profile/<str:token>/',GetProfile.as_view()),
     path('load_picture/',LoadPicture.as_view()),
     path('createFullPicture/',CreateOrUpdateFullPicture.as_view()),
     path('get_is_publish/',GetIsPublish.as_view()),
-    path('all_picture/',AllPicture.as_view())
+    path('all_picture/',AllPicture.as_view()),
+    path('delete_google_account/',DeleteGoogleAccount.as_view())
 
 ]

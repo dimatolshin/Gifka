@@ -84,70 +84,8 @@ class Add_Text_Gif(APIView):
         })
 
 
-class AddTextToImage(APIView):
-    def post(self, request):
-        token_key = request.data.get('token')
-        try:
-            token = Token.objects.get(key=token_key)
-        except Token.DoesNotExist:
-            return Response({'error': 'Неправильный токен'}, status=status.HTTP_400_BAD_REQUEST)
-        user = token.user
-        picturefull = get_object_or_404(CreatePicture, pk=request.data['сreate_picture_id'])
-        if not (picturefull.left and picturefull.top and
-                picturefull.right and picturefull.bottom):
-            output_path = os.path.join(settings.MEDIA_ROOT, f'{picturefull.picture.photo}')
-            return FileResponse(open(output_path, 'rb'), content_type='image/jpeg')
-        image_path = os.path.join(settings.MEDIA_ROOT, picturefull.photo.name)
-        original_image = Image.open(image_path)
-        font = '/root/Gifka/font/mons.ttf'
-        # Загружаем шрифт (можно заменить на свой)
-        try:
-            font_path = font  # Путь к вашему шрифту
-            font_size = 45
-            font = ImageFont.truetype(font_path, font_size, encoding='unic')
-        except IOError:
-            font = ImageFont.load_default()
-
-        # Добавляем текст к изображению
-        draw = ImageDraw.Draw(original_image)
-        text = f"{user.profile.promokode}"  # Ваш текст
-
-        # Определите координаты границ
-        left, top = picturefull.left, picturefull.top
-        right, bottom = picturefull.right, picturefull.bottom
-
-        # Проверяем размер текста и уменьшаем размер шрифта, если нужно
-        text_bbox = draw.textbbox((0, 0), text, font=font)
-        text_width = text_bbox[2] - text_bbox[0]
-        text_height = text_bbox[3] - text_bbox[1]
-
-        while text_width > (right - left) or text_height > (bottom - top):
-            font_size -= 1
-            if font_size <= 5:  # Минимальный размер шрифта для предотвращения бесконечного цикла
-                break
-            font = ImageFont.truetype(font_path, size=font_size, encoding='unic')
-            text_bbox = draw.textbbox((0, 0), text, font=font)
-            text_width = text_bbox[2] - text_bbox[0]
-            text_height = text_bbox[3] - text_bbox[1]
-
-        # Рассчитываем позицию текста для центрирования
-        text_x = left + (right - left - text_width) // 2
-        text_y = top + (bottom - top - text_height) // 2
-
-        # Нарисуйте текст на изображении в заданных границах
-        draw.text((text_x, text_y), text, font=font, fill=f"{picturefull.color_text}")
-
-        # Сохраняем изображение с добавленным текстом
-        output_filename = "modified_image.jpg"  # Измените на желаемое имя файла
-        output_path = os.path.join(settings.MEDIA_ROOT, output_filename)
-        original_image.save(output_path, format='JPEG')
-
-        # Отправляем файл как ответ
-        return FileResponse(open(output_path, 'rb'), content_type='image/jpeg')
-
-
 import uuid
-import tempfile
+from django.http import JsonResponse
 
 
 class AddTextToImageTest(APIView):
@@ -159,51 +97,43 @@ class AddTextToImageTest(APIView):
             return Response({'error': 'Неправильный токен'}, status=status.HTTP_400_BAD_REQUEST)
 
         user = token.user
-        сreate_picture_id = request.data.get('сreate_picture_id')
+        create_picture_id = request.data.get('create_picture_id')
         country = request.data.get('country')
         language = request.data.get('language')
         value = request.data.get('value')
         format = request.data.get('format')
         topic = request.data.get('topic')
 
-        images = []
-
-        if сreate_picture_id:
-            picturefull = get_object_or_404(CreatePicture, pk=сreate_picture_id)
-            if self._has_required_fields(picturefull):
-                image_data = self._process_image(picturefull, user)
-                if image_data:
-                    images.append((f"image_{uuid.uuid4().hex}.jpg", image_data))
+        if create_picture_id:
+            picturefull = get_object_or_404(CreatePicture, pk=create_picture_id)
+            file_path = self._process_image(picturefull, user)
+            if file_path:
+                return JsonResponse({'file_path': file_path})
         elif country and language and value and format and topic:
             queryset = CreatePicture.objects.filter(
                 Q(country=country) & Q(language=language) & Q(value=value) & Q(format=format) & Q(topic=topic)
             )
+            file_paths = []
             for picturefull in queryset:
-                if self._has_required_fields(picturefull) and picturefull.is_publish == True:
-                    image_data = self._process_image(picturefull, user)
-                    if image_data:
-                        images.append((f"image_{uuid.uuid4().hex}.jpg", image_data))
+                if self._has_required_fields(picturefull) or picturefull.is_publish:
+                    file_path = self._process_image(picturefull,
+                                                    user if self._has_required_fields(picturefull) else None)
+                    if file_path:
+                        file_paths.append(file_path)
 
-        if not images:
-            return Response({'error': 'Нет изображений для обработки'}, status=status.HTTP_404_NOT_FOUND)
+            if file_paths:
+                return JsonResponse({'file_paths': file_paths})
 
-        response = HttpResponse(content_type='multipart/mixed')
-        for filename, img_data in images:
-            response.write(b'--boundary\r\n')
-            response.write(f'Content-Disposition: form-data; name="file"; filename="{filename}"\r\n'.encode())
-            response.write(b'Content-Type: image/jpeg\r\n\r\n')
-            response.write(img_data)
-            response.write(b'\r\n')
-        response.write(b'--boundary--\r\n')
-        return response
+        return Response({'error': 'Нет изображений для обработки'}, status=status.HTTP_404_NOT_FOUND)
 
     def _has_required_fields(self, picture):
-        return all([picture.left, picture.top, picture.right, picture.bottom])
+        return all(
+            [picture.left is not None, picture.top is not None, picture.right is not None, picture.bottom is not None])
 
     def _process_image(self, picturefull, user):
-        image_path = os.path.join(settings.MEDIA_ROOT, picturefull.photo.name)
+        image_path = os.path.join(settings.MEDIA_ROOT, picturefull.name)
         original_image = Image.open(image_path)
-        font = '/root/Gifka/font/mons.ttf'
+        font = 'root/Gifka/font/mons.ttf'
         font_size = 45
         try:
             font_path = font
@@ -211,43 +141,43 @@ class AddTextToImageTest(APIView):
         except IOError:
             font = ImageFont.load_default()
 
-        draw = ImageDraw.Draw(original_image)
-        text = f"{user.profile.promokode}"
-        left, top = picturefull.left, picturefull.top
-        right, bottom = picturefull.right, picturefull.bottom
+        if user:
+            draw = ImageDraw.Draw(original_image)
+            text = f"{user.profile.promokode}"
+            left, top, right, bottom = picturefull.left, picturefull.top, picturefull.right, picturefull.bottom
 
-        text_bbox = draw.textbbox((0, 0), text, font=font)
-        text_width = text_bbox[2] - text_bbox[0]
-        text_height = text_bbox[3] - text_bbox[1]
+            if None in [left, top, right, bottom]:
+                text_x, text_y = 0, 0
+                text_width, text_height = 0, 0
+            else:
+                text_bbox = draw.textbbox((0, 0), text, font=font)
+                text_width = text_bbox[2] - text_bbox[0]
+                text_height = text_bbox[3] - text_bbox[1]
 
-        while text_width > (right - left) or text_height > (bottom - top):
-            font_size -= 1
-            if font_size <= 5:
-                break
-            font = ImageFont.truetype(font_path, size=font_size, encoding='unic')
-            text_bbox = draw.textbbox((0, 0), text, font=font)
-            text_width = text_bbox[2] - text_bbox[0]
-            text_height = text_bbox[3] - text_bbox[1]
+                while text_width > (right - left) or text_height > (bottom - top):
+                    font_size -= 1
+                    if font_size <= 5:
+                        break
+                    font = ImageFont.truetype(font_path, size=font_size, encoding='unic')
+                    text_bbox = draw.textbbox((0, 0), text, font=font)
+                    text_width = text_bbox[2] - text_bbox[0]
+                    text_height = text_bbox[3] - text_bbox[1]
 
-        text_x = left + (right - left - text_width) // 2
-        text_y = top + (bottom - top - text_height) // 2
+                text_x = left + (right - left - text_width) // 2
+                text_y = top + (bottom - top - text_height) // 2
 
-        draw.text((text_x, text_y), text, font=font, fill=f"{picturefull.color_text}")
+            if not (None in [left, top, right, bottom]):
+                draw.text((text_x, text_y), text, font=font, fill=f"{picturefull.color_text}")
 
-        # Создание временного файла
+        if original_image.mode in ("RGBA", "LA") or (
+                original_image.mode == "P" and "transparency" in original_image.info):
+            original_image = original_image.convert("RGB")
+
         output_filename = f"{uuid.uuid4().hex}.jpg"
-        temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".jpg", dir=settings.MEDIA_ROOT)
-        output_path = temp_file.name
-        original_image.save(output_path, format='JPEG')
+        temp_file_path = os.path.join(settings.MEDIA_ROOT, output_filename)
+        original_image.save(temp_file_path, format='JPEG')
 
-        # Чтение данных файла
-        with open(output_path, 'rb') as img_file:
-            img_data = img_file.read()
-
-        # Удаление временного файла
-        os.remove(output_path)
-
-        return img_data
+        return temp_file_path
 
 
 class GoogleAuth(APIView):
@@ -381,9 +311,8 @@ class LoadPicture(APIView):
             files = request.FILES.getlist('photos')
             photos = []
             for file in files:
-                photo = Picture.objects.create(image=file)
+                photo = Picture.objects.create(photo=file)
                 photos.append(photo)
-
             serializer = PhotoSerializer(photos, many=True)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         except:
@@ -391,7 +320,7 @@ class LoadPicture(APIView):
 
 
 class GetProfile(APIView):
-    def get(self, token):
+    def get(self, request, token):
         try:
             token = Token.objects.get(key=token)
         except Token.DoesNotExist:
@@ -417,22 +346,25 @@ class CreateOrUpdateFullPicture(APIView):
         picture_id = request.data.get('picture_id')
         full_picture_id = request.data.get('full_picture_id')
 
+        # Проверяем наличие хотя бы одного ключа
+        if not (picture_id or full_picture_id):
+            return Response({'error': 'Не указан ни один из ключей: picture_id или full_picture_id'},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        # Если передан full_picture_id, обновляем существующий объект
         if full_picture_id:
-            # Обновляем существующий объект CreatePicture
             full_picture = get_object_or_404(CreatePicture, id=full_picture_id)
             partial = True  # Частичное обновление
-        elif picture_id:
-            # Создаем новый объект CreatePicture
+        else:
+            # Создаем новый объект CreatePicture, используя picture_id
             picture = get_object_or_404(Picture, id=picture_id)
             full_picture = CreatePicture(picture=picture)
             partial = False  # Полное создание
-        else:
-            # Если нет picture_id и full_picture_id, возвращаем ошибку
-            return Response({'error': 'Отсутствует picture_id или full_picture_id'}, status=status.HTTP_400_BAD_REQUEST)
 
         # Подготавливаем данные для сериализатора
         data = {
-            'picture': picture_id if picture_id else full_picture.picture.id,
+            'picture': full_picture.picture.id,
+            'name': str(full_picture.picture.photo),
             'country': request.data.get('country', full_picture.country),
             'language': request.data.get('language', full_picture.language),
             'value': request.data.get('value', full_picture.value),
@@ -444,7 +376,7 @@ class CreateOrUpdateFullPicture(APIView):
             'bottom': request.data.get('bottom', full_picture.bottom),
             'color_text': request.data.get('color', full_picture.color_text),
         }
-
+        print(data)
         serializer = CreatePhotoSerializer(full_picture, data=data, partial=partial)
 
         if serializer.is_valid():
@@ -459,15 +391,14 @@ class AllPicture(APIView):
     def get(self, request):
         data = []
         try:
-            picture_with_cord = CreatePicture.objects.filter(is_publish=False)
             picture = Picture.objects.all()
-
+            picture_with_cord = CreatePicture.objects.filter(is_publish=False)
             # Обработка изображений из CreatePicture
             if picture_with_cord:
                 for i in picture_with_cord:
                     data.append({
-                        'url': request.build_absolute_uri(f'/media/{i.image.name}'),
-                        'name': i.picture.name,
+                        'url': request.build_absolute_uri(f'/media/{i.name}'),
+                        'name': i.name,
                         'country': i.country,
                         'language': i.language,
                         'value': i.value,
@@ -486,9 +417,9 @@ class AllPicture(APIView):
             existing_names = {item['name'] for item in data}
             if picture:
                 for i in picture:
-                    if i.name not in existing_names:
+                    if i.photo not in existing_names:
                         data.append({
-                            'url': request.build_absolute_uri(f'/media/{i.image.name}'),
+                            'url': request.build_absolute_uri(f'/media/{i.photo}'),
                             'picture_id': i.pk
                         })
 
@@ -496,3 +427,15 @@ class AllPicture(APIView):
 
         except Exception as e:
             return Response({'Error': f'Нет картинок: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class DeleteGoogleAccount(APIView):
+    def post(self, request):
+        try:
+            token_key = request.data['token']
+            token = Token.objects.get(key=token_key)
+            user = token.user
+            user.delete()
+            return Response({"Success": 'Удаление прошло успешно'}, status=status.HTTP_200_OK)
+        except:
+            return Response({'Error':'Неудачно'})
