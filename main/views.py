@@ -371,7 +371,6 @@ class CreateOrUpdateFullPicture(APIView):
             'bottom': request.data.get('bottom', full_picture.bottom),
             'color_text': request.data.get('color', full_picture.color_text),
         }
-        print(data)
         serializer = CreatePhotoSerializer(full_picture, data=data, partial=partial)
 
         if serializer.is_valid():
@@ -387,7 +386,7 @@ class AllPicture(APIView):
         data = []
         try:
             picture = Picture.objects.all()
-            picture_with_cord = CreatePicture.objects.filter(is_publish=False)
+            picture_with_cord = CreatePicture.objects.all()
             # Обработка изображений из CreatePicture
             if picture_with_cord:
                 for i in picture_with_cord:
