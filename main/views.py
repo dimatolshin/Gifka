@@ -99,6 +99,7 @@ class AddTextToImageTest(APIView):
             return Response({'error': 'Неправильный токен'}, status=status.HTTP_400_BAD_REQUEST)
 
         user = token.user
+
         create_picture_id = request.data.get('create_picture_id')
         country = request.data.get('country')
         language = request.data.get('language')
@@ -136,7 +137,7 @@ class AddTextToImageTest(APIView):
         image_path = os.path.join(settings.MEDIA_ROOT, picturefull.name)
         original_image = Image.open(image_path)
         font_path = os.path.join(settings.BASE_DIR, 'font', 'mons.ttf')
-        font_size = 45
+        font_size = picturefull.size
         try:
             font = ImageFont.truetype(font_path, font_size, encoding='unic')
         except IOError:
@@ -370,6 +371,7 @@ class CreateOrUpdateFullPicture(APIView):
             'top': request.data.get('top', full_picture.top),
             'bottom': request.data.get('bottom', full_picture.bottom),
             'color_text': request.data.get('color', full_picture.color_text),
+            'size': request.data.get('size', full_picture.size)
         }
         serializer = CreatePhotoSerializer(full_picture, data=data, partial=partial)
 
@@ -405,6 +407,7 @@ class AllPicture(APIView):
                         'top': i.top,
                         'bottom': i.bottom,
                         'full_picture_id': i.pk,
+                        'size':i.size,
                     })
 
             # Обработка изображений из Picture
