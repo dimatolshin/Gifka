@@ -108,23 +108,23 @@ class AddTextToImageTest(APIView):
 
         if create_picture_id:
             picturefull = get_object_or_404(CreatePicture, pk=create_picture_id)
-            file_path = self._process_image(picturefull, user)
-            if file_path:
-                return JsonResponse({'file_path': file_path})
+            file_url = self._process_image(picturefull, user)
+            if file_url:
+                return JsonResponse({'file_url': file_url})
         elif country and language and value and format and topic:
             queryset = CreatePicture.objects.filter(
                 Q(country=country) & Q(language=language) & Q(value=value) & Q(format=format) & Q(topic=topic)
             )
-            file_paths = []
+            file_urls = []
             for picturefull in queryset:
                 if self._has_required_fields(picturefull) or picturefull.is_publish:
-                    file_path = self._process_image(picturefull,
+                    file_url = self._process_image(picturefull,
                                                     user if self._has_required_fields(picturefull) else None)
-                    if file_path:
-                        file_paths.append(file_path)
+                    if file_url:
+                        file_urls.append(file_url)
 
-            if file_paths:
-                return JsonResponse({'file_paths': file_paths})
+            if file_urls:
+                return JsonResponse({'file_urls': file_urls})
 
         return Response({'error': 'Нет изображений для обработки'}, status=status.HTTP_404_NOT_FOUND)
 
@@ -135,10 +135,9 @@ class AddTextToImageTest(APIView):
     def _process_image(self, picturefull, user):
         image_path = os.path.join(settings.MEDIA_ROOT, picturefull.name)
         original_image = Image.open(image_path)
-        font = 'root/Gifka/font/mons.ttf'
+        font_path = os.path.join(settings.BASE_DIR, 'font', 'mons.ttf')
         font_size = 45
         try:
-            font_path = font
             font = ImageFont.truetype(font_path, font_size, encoding='unic')
         except IOError:
             font = ImageFont.load_default()
@@ -179,7 +178,9 @@ class AddTextToImageTest(APIView):
         temp_file_path = os.path.join(settings.MEDIA_ROOT, output_filename)
         original_image.save(temp_file_path, format='JPEG')
 
-        return temp_file_path
+        # Формируем URL для доступа к файлу
+        file_url = f"bwcreatorhub.com{settings.MEDIA_URL}{output_filename}"
+        return file_url
 
 
 class GoogleAuth(APIView):
