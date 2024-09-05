@@ -179,7 +179,7 @@ class AddTextToImageTest(APIView):
         original_image.save(temp_file_path, format='JPEG')
 
         # Формируем URL для доступа к файлу
-        file_url = f"bwcreatorhub.com{settings.MEDIA_URL}{output_filename}"
+        file_url = f"https://bwcreatorhub.com{settings.MEDIA_URL}{output_filename}"
         return file_url
 
 
