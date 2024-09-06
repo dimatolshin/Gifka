@@ -26,8 +26,10 @@
   "Password_space": "Password must not start with a space",
   "Consent_is_required": "Consent is required for registration",
   "Passwords_do_not_match": "Passwords do not match",
+  "Promo": "'Promo code' section",
+  "Platform": "BetWinner Affiliates platform",
   "Step": "Step",
-  "Step_Text": "To start using the service, you must be registered on the BetWinner Affiliates platform",
-  "Step_TextTwo": "and have an active partner 'Promo code'. If you don't have one, don't worry. Simply go to the 'Promo code' section",
+  "Step_Text": "To start using the service, you must be registered on the",
+  "Step_TextTwo": "and have an active partner 'Promo code'. If you don't have one, don't worry. Simply go to the ",
   "Step_TextThree": "and create a new code. Enter the active promo code in the field below."
 }

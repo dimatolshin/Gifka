@@ -26,6 +26,8 @@
   "Password_space": "Пароль не должен начинаться с пробела",
   "Consent_is_required": "Для регистрации необходимо дать согласие",
   "Passwords_do_not_match": "Пароли не совпадают",
+  "Promo": "'Promo code' section",
+  "Platform": "BetWinner Affiliates platform",
   "Step": "Step",
   "Step_Text": "To start using the service, you must be registered on the",
   "Step_TextTwo": "and have an active partner 'Promo code'. If you don't have one, don't worry. Simply go to the ",

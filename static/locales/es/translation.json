@@ -26,8 +26,10 @@
   "Password_space": "La contraseña no debe comenzar con un espacio",
   "Consent_is_required": "Se requiere consentimiento para el registro",
   "Passwords_do_not_match": "Las contraseñas no coinciden",
+  "Promo": "sección 'Código promocional'",
+  "Platform": "plataforma BetWinner Affiliates",
   "Step": "Paso",
-  "Step_Text": "Para comenzar a usar el servicio, debe estar registrado en la plataforma BetWinner Affiliates",
-  "Step_TextTwo": "y tener un 'Código promocional' de socio activo. Si no tiene uno, no se preocupe. Simplemente vaya a la sección 'Código promocional'",
+  "Step_Text": "Para comenzar a usar el servicio, debe estar registrado en la",
+  "Step_TextTwo": "y tener un 'Código promocional' de socio activo. Si no tiene uno, no se preocupe. Simplemente vaya a la ",
   "Step_TextThree": "y cree un nuevo código. Ingrese el código promocional activo en el campo de abajo."
 }
