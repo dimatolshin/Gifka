@@ -590,7 +590,7 @@ class FilterAdminGif(APIView):
 
         # Собираем параметры фильтрации из запроса
         filters = {param: request.data.get(param) for param in ['country', 'language', 'value', 'format', 'topic'] if
-                   request.data.get(param)}
+                   request.data.get(param) != ''}
 
         # Фильтрация изображений
         gif_with_cord = CreatePicture.objects.filter(Q(**filters), name__icontains='.gif')
@@ -634,7 +634,7 @@ class FilterAdminPicture(APIView):
 
         # Собираем параметры фильтрации из запроса
         filters = {param: request.data.get(param) for param in ['country', 'language', 'value', 'format', 'topic'] if
-                   request.data.get(param)}
+                   request.data.get(param) != ''}
 
         # Фильтрация изображений
         picture_with_cord = CreatePicture.objects.filter(Q(**filters) & ~Q(name__icontains='.gif'))

@@ -22,7 +22,7 @@ class Picture(models.Model):
 
 
 class CreatePicture(models.Model):
-    picture = models.OneToOneField(Picture, related_name="Createpicture", on_delete=models.CASCADE)
+    picture = models.ForeignKey(Picture, related_name="Createpicture", on_delete=models.CASCADE)
     name = models.CharField(max_length=300)
     country = models.CharField(max_length=100)
     language = models.CharField(max_length=100)
