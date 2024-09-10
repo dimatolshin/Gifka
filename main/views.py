@@ -569,7 +569,7 @@ class DeleteFullPicture(APIView):
         if user.profile.is_admin == True:
             data = get_object_or_404(CreatePicture, id=full_picture_id)
             data.delete()
-            return Response({'Success': 'Изменение прошло успешно'}, status=status.HTTP_200_OK)
+            return Response({'Success': 'Удаление прошло успешно'}, status=status.HTTP_200_OK)
         else:
             return Response({'Error': 'Недостаточно прав'}, status=status.HTTP_400_BAD_REQUEST)
 

@@ -20,3 +20,25 @@
 
 
 8)http://localhost:8000/accounts/login/
+
+9)получение гиф с промокодом api/create_gif/
+
+Поля ( create_picture_id, token ) ---- Post запрос (предпросмотр гифки,в админке)
+Поля ( 'country', 'language', 'value', 'format', 'topic' token ) ---- Post запрос (для создания промокода на все гифки с фильтрами )
+ответ: Юрлы
+
+10) получение списка всех гифок api/all_gif/
+Get -запрос
+ответ: Юрлы
+
+11)Удаление фулпикчи /api/delete_fullpicture/
+Поля ( full_picture_id,token ) ---- Post запрос
+ответ: Успех или ошибка
+
+12) Фильтрация картинок в админке /api/filter_admin_picture/
+Поля (token,'country', 'language', 'value', 'format', 'topic') ---- Post запрос
+ответ: Юрлы + все поля
+
+13) Фильтрация картинок в админке /api/filter_admin_gif/
+Поля (token,'country', 'language', 'value', 'format', 'topic') ---- Post запрос
+ответ: Юрлы +  все поля
