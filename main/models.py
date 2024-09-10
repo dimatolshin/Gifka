@@ -36,6 +36,8 @@ class CreatePicture(models.Model):
     bottom = models.IntegerField(null=True, blank=True)
     color_text = models.CharField(max_length=100, default='black')
     size = models.IntegerField(default=0)
+    start_frame = models.IntegerField(null=True, blank=True)
+    end_frame = models.IntegerField(null=True, blank=True)
 
     def __str__(self):
         return (f'id картинка:{self.picture.pk}, страна:{self.country}, язык:{self.language}, '

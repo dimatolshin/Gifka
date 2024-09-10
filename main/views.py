@@ -70,20 +70,114 @@ from django.http import FileResponse
 from PIL import Image, ImageDraw, ImageFont, ImageSequence
 import os
 from django.conf import settings
+from rest_framework.parsers import MultiPartParser
 
 
-class Add_Text_Gif(APIView):
+class AddTextToGif(APIView):
     def post(self, request):
         token_key = request.data.get('token')
         try:
             token = Token.objects.get(key=token_key)
         except Token.DoesNotExist:
-            return Response({'error': 'Неправильный токен'}, status=status.HTTP_400_BAD_REQUEST)
+            return JsonResponse({'error': 'Неправильный токен'}, status=status.HTTP_400_BAD_REQUEST)
+
         user = token.user
-        return Response({
-            'promokode': user.profile.promokode,
-            'svg': user.profile.gif
-        })
+
+        # Собираем параметры фильтрации из запроса
+        filters = {param: request.data.get(param) for param in ['country', 'language', 'value', 'format', 'topic'] if
+                   request.data.get(param)}
+
+        if 'create_picture_id' in request.data:
+            create_picture_id = request.data.get('create_picture_id')
+            picturefull = get_object_or_404(CreatePicture, pk=create_picture_id)
+            file_url = self._process_gif(picturefull, user, picturefull.start_frame, picturefull.end_frame)
+            if file_url:
+                return JsonResponse({'file_url': file_url})
+        elif filters:
+            # Используем динамические фильтры
+            queryset = CreatePicture.objects.filter(Q(**filters) & Q(is_publish=True), name__icontains='.gif')
+            file_urls = []
+            for picturefull in queryset:
+                if self._has_required_fields(picturefull) or picturefull.is_publish:
+                    file_url = self._process_gif(picturefull, user if self._has_required_fields(picturefull) else None,
+                                                 picturefull.start_frame, picturefull.end_frame)
+                    if file_url:
+                        file_urls.append(file_url)
+
+            if file_urls:
+                return JsonResponse({'file_urls': file_urls})
+
+        return JsonResponse({'error': 'Нет изображений для обработки'}, status=status.HTTP_404_NOT_FOUND)
+
+    def _has_required_fields(self, picture):
+        return all(
+            [picture.left is not None, picture.top is not None, picture.right is not None, picture.bottom is not None])
+
+    def _process_gif(self, picturefull, user, start_frame, end_frame):
+        gif_path = os.path.join(settings.MEDIA_ROOT, picturefull.name)
+        text = user.profile.promokode if user else ""
+        position = (picturefull.left, picturefull.top) if self._has_required_fields(picturefull) else (0, 0)
+        font_size = picturefull.size
+        font_mons = os.path.join(settings.BASE_DIR, 'font', 'mons.ttf')
+        text_color = picturefull.color_text
+
+        # Укажите путь к файлу, который вы хотите обновить
+        output_filename = f"{os.path.splitext(picturefull.name)[0]}_updated.gif"
+        temp_file_path = os.path.join(settings.MEDIA_ROOT, output_filename)
+
+        try:
+            self._add_text_to_gif(gif_path, text, position, start_frame, end_frame, font_size, font_mons, text_color,
+                                  temp_file_path)
+            file_url = self.request.build_absolute_uri(f'{settings.MEDIA_URL}{output_filename}')
+            return file_url
+        except Exception as e:
+            return None
+
+    def _add_text_to_gif(self, gif_file, text, position, start_frame, end_frame, font_size, font_mons, text_color,
+                         output_path):
+        try:
+            gif = Image.open(gif_file)
+        except IOError:
+            return None
+
+        frames = []
+        move_duration = 6  # Количество кадров для перемещения текста
+        move_out_duration = 10  # Количество кадров для перемещения текста вправо
+
+        for i in range(gif.n_frames):
+            gif.seek(i)
+            frame = gif.copy()
+            draw = ImageDraw.Draw(frame)
+            try:
+                font = ImageFont.truetype(font_mons, font_size)
+            except IOError:
+                return None
+
+            if start_frame <= i <= end_frame:
+                if i < start_frame + move_duration:
+                    x = int(position[0] * (i - start_frame) / move_duration)
+                else:
+                    x = position[0]
+                y = position[1]
+
+                text_overlay = Image.new('RGBA', frame.size, (255, 255, 255, 0))
+                text_draw = ImageDraw.Draw(text_overlay)
+                text_draw.text((x, y), text, font=font, fill=text_color)
+
+                frame = Image.alpha_composite(frame.convert('RGBA'), text_overlay)
+            elif i > end_frame and i <= end_frame + move_out_duration:
+                x = position[0] + int((i - end_frame) * 10)
+                y = position[1]
+
+                text_overlay = Image.new('RGBA', frame.size, (255, 255, 255, 0))
+                text_draw = ImageDraw.Draw(text_overlay)
+                text_draw.text((x, y), text, font=font, fill=text_color)
+
+                frame = Image.alpha_composite(frame.convert('RGBA'), text_overlay)
+
+            frames.append(frame.convert('RGB'))
+
+        frames[0].save(output_path, save_all=True, append_images=frames[1:], loop=0)
 
 
 import uuid
@@ -96,38 +190,39 @@ class AddTextToImageTest(APIView):
         try:
             token = Token.objects.get(key=token_key)
         except Token.DoesNotExist:
-            return Response({'error': 'Неправильный токен'}, status=status.HTTP_400_BAD_REQUEST)
+            return JsonResponse({'error': 'Неправильный токен'}, status=status.HTTP_400_BAD_REQUEST)
 
         user = token.user
 
-        create_picture_id = request.data.get('create_picture_id')
-        country = request.data.get('country')
-        language = request.data.get('language')
-        value = request.data.get('value')
-        format = request.data.get('format')
-        topic = request.data.get('topic')
+        # Собираем параметры фильтрации из запроса
+        filters = {}
+        for param in ['create_picture_id', 'country', 'language', 'value', 'format', 'topic']:
+            value = request.data.get(param)
+            if value:
+                filters[param] = value
 
-        if create_picture_id:
+        # Обработка по ID изображения
+        if 'create_picture_id' in filters:
+            create_picture_id = filters.pop('create_picture_id')
             picturefull = get_object_or_404(CreatePicture, pk=create_picture_id)
             file_url = self._process_image(picturefull, user)
             if file_url:
                 return JsonResponse({'file_url': file_url})
-        elif country and language and value and format and topic:
-            queryset = CreatePicture.objects.filter(
-                Q(country=country) & Q(language=language) & Q(value=value) & Q(format=format) & Q(topic=topic)
-            )
+        elif filters:
+            # Используем динамические фильтры
+            queryset = CreatePicture.objects.filter(Q(**filters) & Q(is_publish=True) & ~Q(name__icontains='.gif'))
             file_urls = []
             for picturefull in queryset:
                 if self._has_required_fields(picturefull) or picturefull.is_publish:
                     file_url = self._process_image(picturefull,
-                                                    user if self._has_required_fields(picturefull) else None)
+                                                   user if self._has_required_fields(picturefull) else None)
                     if file_url:
                         file_urls.append(file_url)
 
             if file_urls:
                 return JsonResponse({'file_urls': file_urls})
 
-        return Response({'error': 'Нет изображений для обработки'}, status=status.HTTP_404_NOT_FOUND)
+        return JsonResponse({'error': 'Нет изображений для обработки'}, status=status.HTTP_404_NOT_FOUND)
 
     def _has_required_fields(self, picture):
         return all(
@@ -175,12 +270,13 @@ class AddTextToImageTest(APIView):
                 original_image.mode == "P" and "transparency" in original_image.info):
             original_image = original_image.convert("RGB")
 
-        output_filename = f"{uuid.uuid4().hex}.jpg"
+        # Генерируем уникальное имя для обновленного изображения
+        output_filename = f"{os.path.splitext(picturefull.name)[0]}_updated.jpg"
         temp_file_path = os.path.join(settings.MEDIA_ROOT, output_filename)
         original_image.save(temp_file_path, format='JPEG')
 
         # Формируем URL для доступа к файлу
-        file_url = f"https://bwcreatorhub.com{settings.MEDIA_URL}{output_filename}"
+        file_url = self.request.build_absolute_uri(f'{settings.MEDIA_URL}{output_filename}')
         return file_url
 
 
@@ -205,78 +301,13 @@ class GoogleAuth(APIView):
             return Response({'error': 'Неверные данные'}, status=status.HTTP_404_NOT_FOUND)
 
 
-
-class AnimateImage(APIView):
-    def post(self, request):
-        token_key = request.data.get('token')
-        try:
-            token = Token.objects.get(key=token_key)
-        except Token.DoesNotExist:
-            return Response({'error': 'Неправильный токен'}, status=status.HTTP_400_BAD_REQUEST)
-        user = token.user
-
-        # Получаем изображение из запроса
-        image_file = '/home/dima_tolshin/PycharmProjects/Gif/mysite/media/1.jpg'
-        if not image_file:
-            return Response({'error': 'Отсутствует изображение'}, status=status.HTTP_400_BAD_REQUEST)
-
-        # Открываем изображение
-        original_image = Image.open(image_file)
-        width, height = original_image.size
-
-        # Параметры анимации
-        num_frames = 60  # Количество кадров
-        move_frames = 20  # Кадры для перемещения
-
-        # Создаем кадры анимации
-        frames = []
-
-        # Сдвиг изображения из левого края в центр
-        for i in range(move_frames):
-            frame = Image.new("RGBA", (width, height))
-            x_offset = int((width - original_image.width) / 2 * i / move_frames)
-            frame.paste(original_image, (x_offset, 0))
-            frames.append(frame)
-
-        # Задержка в центре
-        for _ in range(5 * (num_frames // (2 * move_frames))):
-            frame = Image.new("RGBA", (width, height))
-            frame.paste(original_image, (int((width - original_image.width) / 2), 0))
-            frames.append(frame)
-
-        # Сдвиг изображения из центра в правый край
-        for i in range(move_frames):
-            frame = Image.new("RGBA", (width, height))
-            x_offset = int((width - original_image.width) / 2 + (width - original_image.width) * i / move_frames)
-            frame.paste(original_image, (x_offset, 0))
-            frames.append(frame)
-
-        # Сохраняем GIF на диск
-        output_filename = f"animated_image_{token_key}.gif"
-        output_path = os.path.join(settings.MEDIA_ROOT, output_filename)
-
-        frames[0].save(
-            output_path,
-            format='GIF',
-            save_all=True,
-            append_images=frames[1:],
-            loop=0,
-            duration=50  # Продолжительность каждого кадра в миллисекундах
-        )
-
-        # Генерируем URL для доступа к файлу
-        file_url = request.build_absolute_uri(f'/media/{output_filename}')
-
-        return Response({'file_url': file_url}, status=status.HTTP_200_OK)
-
-
 class CreatePromocodeAndProfile(APIView):
     def post(self, request):
         token_key = request.data['token']
         promocode = str(request.data['promocode'])
 
-        if len(promocode) > 15:
-            return Response({'error': 'Больше 15 символов '})
+        if len(promocode) > 15 or len(promocode) < 3:
+            return Response({'error': 'Символов не может быть меньше 3 и не больше 15 '})
 
         # Проверка наличия токена
         try:
@@ -339,56 +370,70 @@ class GetIsPublish(APIView):
 
 class CreateOrUpdateFullPicture(APIView):
     def post(self, request):
-        picture_id = request.data.get('picture_id')
-        full_picture_id = request.data.get('full_picture_id')
+        # Получаем данные из запроса
+        picture_data_list = request.data.get('pictures', [])
 
-        # Проверяем наличие хотя бы одного ключа
-        if not (picture_id or full_picture_id):
-            return Response({'error': 'Не указан ни один из ключей: picture_id или full_picture_id'},
+        if not picture_data_list:
+            return Response({'error': 'Не предоставлены данные для создания или обновления'},
                             status=status.HTTP_400_BAD_REQUEST)
 
-        # Если передан full_picture_id, обновляем существующий объект
-        if full_picture_id:
-            full_picture = get_object_or_404(CreatePicture, id=full_picture_id)
-            partial = True  # Частичное обновление
-        else:
-            # Создаем новый объект CreatePicture, используя picture_id
-            picture = get_object_or_404(Picture, id=picture_id)
-            full_picture = CreatePicture(picture=picture)
-            partial = False  # Полное создание
+        responses = []
+        for picture_data in picture_data_list:
+            picture_id = picture_data.get('picture_id')
+            full_picture_id = picture_data.get('full_picture_id')
 
-        # Подготавливаем данные для сериализатора
-        data = {
-            'picture': full_picture.picture.id,
-            'name': str(full_picture.picture.photo),
-            'country': request.data.get('country', full_picture.country),
-            'language': request.data.get('language', full_picture.language),
-            'value': request.data.get('value', full_picture.value),
-            'format': request.data.get('format', full_picture.format),
-            'topic': request.data.get('topic', full_picture.topic),
-            'left': request.data.get('left', full_picture.left),
-            'right': request.data.get('right', full_picture.right),
-            'top': request.data.get('top', full_picture.top),
-            'bottom': request.data.get('bottom', full_picture.bottom),
-            'color_text': request.data.get('color', full_picture.color_text),
-            'size': request.data.get('size', full_picture.size)
-        }
-        serializer = CreatePhotoSerializer(full_picture, data=data, partial=partial)
+            if not (picture_id or full_picture_id):
+                responses.append({'error': 'Не указан ни один из ключей: picture_id или full_picture_id'})
+                continue
 
-        if serializer.is_valid():
-            serializer.save()
-            return Response({'status': 'Успех'}, status=status.HTTP_200_OK)
-        else:
-            return Response({'error': 'Неправильныe данные', 'details': serializer.errors},
-                            status=status.HTTP_400_BAD_REQUEST)
+            if full_picture_id:
+                # Обновляем существующий объект
+                full_picture = get_object_or_404(CreatePicture, id=full_picture_id)
+                partial = True  # Частичное обновление
+            else:
+                # Создаем новый объект
+                picture = get_object_or_404(Picture, id=picture_id)
+                full_picture = CreatePicture(picture=picture)
+                partial = False  # Полное создание
+
+            # Подготавливаем данные для сериализатора
+            data = {
+                'picture': full_picture.picture.id,
+                'name': str(full_picture.picture.photo),
+                'country': picture_data.get('country', full_picture.country),
+                'language': picture_data.get('language', full_picture.language),
+                'value': picture_data.get('value', full_picture.value),
+                'format': picture_data.get('format', full_picture.format),
+                'topic': picture_data.get('topic', full_picture.topic),
+                'left': picture_data.get('left', full_picture.left),
+                'right': picture_data.get('right', full_picture.right),
+                'top': picture_data.get('top', full_picture.top),
+                'bottom': picture_data.get('bottom', full_picture.bottom),
+                'color_text': picture_data.get('color', full_picture.color_text),
+                'size': picture_data.get('size', full_picture.size)
+            }
+            serializer = CreatePhotoSerializer(full_picture, data=data, partial=partial)
+
+            if serializer.is_valid():
+                serializer.save()
+                responses.append({'status': 'Успех', 'picture_id': full_picture.id})
+            else:
+                responses.append({'error': 'Неправильные данные', 'details': serializer.errors})
+
+        # Проверка на наличие ошибок
+        errors = [response for response in responses if 'error' in response]
+        if errors:
+            return Response({'errors': errors}, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response({'status': 'Успех', 'results': responses}, status=status.HTTP_200_OK)
 
 
 class AllPicture(APIView):
     def get(self, request):
         data = []
         try:
-            picture = Picture.objects.all()
-            picture_with_cord = CreatePicture.objects.all()
+            picture = Picture.objects.filter(~Q(photo__icontains='.gif'))
+            picture_with_cord = CreatePicture.objects.filter(~Q(name__icontains='.gif'))
             # Обработка изображений из CreatePicture
             if picture_with_cord:
                 for i in picture_with_cord:
@@ -407,13 +452,56 @@ class AllPicture(APIView):
                         'top': i.top,
                         'bottom': i.bottom,
                         'full_picture_id': i.pk,
-                        'size':i.size,
+                        'size': i.size,
                     })
 
             # Обработка изображений из Picture
             existing_names = {item['name'] for item in data}
             if picture:
                 for i in picture:
+                    if i.photo not in existing_names:
+                        data.append({
+                            'url': request.build_absolute_uri(f'/media/{i.photo}'),
+                            'picture_id': i.pk
+                        })
+
+            return Response(data, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response({'Error': f'Нет картинок: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class AllGif(APIView):
+    def get(self, request):
+        data = []
+        try:
+            gif = Picture.objects.filter(photo__icontains='.gif')
+            gif_with_cord = CreatePicture.objects.filter(name__icontains='.gif')
+            # Обработка изображений из CreatePicture
+            if gif_with_cord:
+                for i in gif_with_cord:
+                    data.append({
+                        'url': request.build_absolute_uri(f'/media/{i.name}'),
+                        'name': i.name,
+                        'country': i.country,
+                        'language': i.language,
+                        'value': i.value,
+                        'format': i.format,
+                        'topic': i.topic,
+                        'is_publish': i.is_publish,
+                        'color_text': i.color_text,
+                        'left': i.left,
+                        'right': i.right,
+                        'top': i.top,
+                        'bottom': i.bottom,
+                        'full_picture_id': i.pk,
+                        'size': i.size,
+                    })
+
+            # Обработка изображений из Picture
+            existing_names = {item['name'] for item in data}
+            if gif:
+                for i in gif:
                     if i.photo not in existing_names:
                         data.append({
                             'url': request.build_absolute_uri(f'/media/{i.photo}'),
@@ -435,13 +523,16 @@ class DeleteGoogleAccount(APIView):
             user.delete()
             return Response({"Success": 'Удаление прошло успешно'}, status=status.HTTP_200_OK)
         except:
-            return Response({'Error':'Неудачно'})
+            return Response({'Error': 'Неудачно'})
 
 
 class ChangePromocode(APIView):
     def post(self, request):
         token_key = request.data.get('token')
         promo = request.data.get('promocode')
+
+        if len(promo) > 15 or len(promo) < 3:
+            return Response({'error': 'Символов не может быть меньше 3 и не больше 15 '})
 
         if not token_key or not promo:
             return Response({'Error': 'Token or promocode not provided'}, status=status.HTTP_400_BAD_REQUEST)
@@ -464,3 +555,108 @@ class ChangePromocode(APIView):
             return Response({'Error': 'Invalid token'}, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
             return Response({'Error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class DeleteFullPicture(APIView):
+    def post(self, request):
+        try:
+            token = request.data['token']
+            tokene = Token.objects.get(key=token)
+        except Token.DoesNotExist:
+            return Response({'error': 'Неправильный токен'}, status=status.HTTP_400_BAD_REQUEST)
+        user = tokene.user
+        full_picture_id = request.data['full_picture_id']
+        if user.profile.is_admin == True:
+            data = get_object_or_404(CreatePicture, id=full_picture_id)
+            data.delete()
+            return Response({'Success': 'Изменение прошло успешно'}, status=status.HTTP_200_OK)
+        else:
+            return Response({'Error': 'Недостаточно прав'}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class FilterAdminGif(APIView):
+    def post(self, request):
+        token_key = request.data.get('token')
+
+        # Проверка наличия токена и его валидности
+        try:
+            token = Token.objects.get(key=token_key)
+        except Token.DoesNotExist:
+            return Response({'error': 'Неправильный токен'}, status=status.HTTP_400_BAD_REQUEST)
+
+        user = token.user
+        if not user.profile.is_admin:
+            return Response({'error': 'Недостаточно прав'}, status=status.HTTP_403_FORBIDDEN)
+
+        # Собираем параметры фильтрации из запроса
+        filters = {param: request.data.get(param) for param in ['country', 'language', 'value', 'format', 'topic'] if
+                   request.data.get(param)}
+
+        # Фильтрация изображений
+        gif_with_cord = CreatePicture.objects.filter(Q(**filters), name__icontains='.gif')
+
+        data = []
+        if gif_with_cord.exists():
+            for i in gif_with_cord:
+                data.append({
+                    'url': request.build_absolute_uri(f'/media/{i.name}'),
+                    'name': i.name,
+                    'country': i.country,
+                    'language': i.language,
+                    'value': i.value,
+                    'format': i.format,
+                    'topic': i.topic,
+                    'is_publish': i.is_publish,
+                    'color_text': i.color_text,
+                    'left': i.left,
+                    'right': i.right,
+                    'top': i.top,
+                    'bottom': i.bottom,
+                    'full_picture_id': i.pk,
+                    'size': i.size,
+                })
+        return Response(data, status=status.HTTP_200_OK)
+
+
+class FilterAdminPicture(APIView):
+    def post(self, request):
+        token_key = request.data.get('token')
+
+        # Проверка наличия токена и его валидности
+        try:
+            token = Token.objects.get(key=token_key)
+        except Token.DoesNotExist:
+            return Response({'error': 'Неправильный токен'}, status=status.HTTP_400_BAD_REQUEST)
+
+        user = token.user
+        if not user.profile.is_admin:
+            return Response({'error': 'Недостаточно прав'}, status=status.HTTP_403_FORBIDDEN)
+
+        # Собираем параметры фильтрации из запроса
+        filters = {param: request.data.get(param) for param in ['country', 'language', 'value', 'format', 'topic'] if
+                   request.data.get(param)}
+
+        # Фильтрация изображений
+        picture_with_cord = CreatePicture.objects.filter(Q(**filters) & ~Q(name__icontains='.gif'))
+
+        data = []
+        if picture_with_cord.exists():
+            for i in picture_with_cord:
+                data.append({
+                    'url': request.build_absolute_uri(f'/media/{i.name}'),
+                    'name': i.name,
+                    'country': i.country,
+                    'language': i.language,
+                    'value': i.value,
+                    'format': i.format,
+                    'topic': i.topic,
+                    'is_publish': i.is_publish,
+                    'color_text': i.color_text,
+                    'left': i.left,
+                    'right': i.right,
+                    'top': i.top,
+                    'bottom': i.bottom,
+                    'full_picture_id': i.pk,
+                    'size': i.size,
+                })
+        return Response(data, status=status.HTTP_200_OK)
