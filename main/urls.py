@@ -21,6 +21,7 @@ urlpatterns = [
     path('filter_admin_picture/', FilterAdminPicture.as_view()),
     path('filter_admin_gif/',FilterAdminGif.as_view()),
     path('delete_fullpicture/',DeleteFullPicture.as_view()),
+    path('download_image/<str:file_name>/',DownloadImage.as_view()),
 
 
 ]
