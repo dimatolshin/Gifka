@@ -92,7 +92,7 @@ class AddTextToGif(APIView):
             picturefull = get_object_or_404(CreatePicture, pk=create_picture_id)
             file_url = self._process_gif(picturefull, user, picturefull.start_frame, picturefull.end_frame)
             if file_url:
-                return JsonResponse({'file_url': file_url})
+                return JsonResponse({'file_url': file_url},as_attachment=True)
         elif filters:
             # Используем динамические фильтры
             queryset = CreatePicture.objects.filter(Q(**filters) & Q(is_publish=True), name__icontains='.gif')
@@ -105,7 +105,7 @@ class AddTextToGif(APIView):
                         file_urls.append(file_url)
 
             if file_urls:
-                return JsonResponse({'file_urls': file_urls})
+                return JsonResponse({'file_urls': file_urls},as_attachment=True)
 
         return JsonResponse({'error': 'Изображений не найдено'}, status=status.HTTP_404_NOT_FOUND)
 
@@ -141,8 +141,8 @@ class AddTextToGif(APIView):
             return None
 
         frames = []
-        move_duration = 6  # Количество кадров для перемещения текста
-        move_out_duration = 10  # Количество кадров для перемещения текста вправо
+        move_duration = 4  # Количество кадров для перемещения текста
+        move_out_duration = 6  # Количество кадров для перемещения текста вправо
 
         for i in range(gif.n_frames):
             gif.seek(i)
@@ -207,7 +207,7 @@ class AddTextToImageTest(APIView):
             picturefull = get_object_or_404(CreatePicture, pk=create_picture_id)
             file_url = self._process_image(picturefull, user)
             if file_url:
-                return JsonResponse({'file_url': file_url})
+                return JsonResponse({'file_url': file_url},as_attachment=True)
         elif filters:
             # Используем динамические фильтры
             queryset = CreatePicture.objects.filter(Q(**filters) & Q(is_publish=True) & ~Q(name__icontains='.gif'))
@@ -220,7 +220,7 @@ class AddTextToImageTest(APIView):
                         file_urls.append(file_url)
 
             if file_urls:
-                return JsonResponse({'file_urls': file_urls})
+                return JsonResponse({'file_urls': file_urls},as_attachment=True)
 
         return JsonResponse({'error': 'Изображений не найдено'}, status=status.HTTP_404_NOT_FOUND)
 
