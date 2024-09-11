@@ -410,7 +410,9 @@ class CreateOrUpdateFullPicture(APIView):
                 'top': picture_data.get('top', full_picture.top),
                 'bottom': picture_data.get('bottom', full_picture.bottom),
                 'color_text': picture_data.get('color', full_picture.color_text),
-                'size': picture_data.get('size', full_picture.size)
+                'size': picture_data.get('size', full_picture.size),
+                'start_frame':picture_data.get('start_frame',full_picture.start_frame),
+                'end_frame': picture_data.get('end_frame', full_picture.end_frame),
             }
             serializer = CreatePhotoSerializer(full_picture, data=data, partial=partial)
 
@@ -496,6 +498,8 @@ class AllGif(APIView):
                         'bottom': i.bottom,
                         'full_picture_id': i.pk,
                         'size': i.size,
+                        'start_frame':i.start_frame,
+                        'end_frame':i.end_frame,
                     })
 
             # Обработка изображений из Picture
