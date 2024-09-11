@@ -281,7 +281,8 @@ class AddTextToImageTest(APIView):
 
 
 class DownloadImage(APIView):
-    def get(self, request, file_name):
+    def post(self, request):
+        file_name = request.data['file_name']
         file_path = os.path.join(settings.MEDIA_ROOT, file_name)
         if os.path.exists(file_path):
             response = FileResponse(open(file_path, 'rb'))
