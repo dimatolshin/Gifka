@@ -107,7 +107,7 @@ class AddTextToGif(APIView):
             if file_urls:
                 return JsonResponse({'file_urls': file_urls})
 
-        return JsonResponse({'error': 'Нет изображений для обработки'}, status=status.HTTP_404_NOT_FOUND)
+        return JsonResponse({'error': 'Изображений не найдено'}, status=status.HTTP_404_NOT_FOUND)
 
     def _has_required_fields(self, picture):
         return all(
@@ -222,7 +222,7 @@ class AddTextToImageTest(APIView):
             if file_urls:
                 return JsonResponse({'file_urls': file_urls})
 
-        return JsonResponse({'error': 'Нет изображений для обработки'}, status=status.HTTP_404_NOT_FOUND)
+        return JsonResponse({'error': 'Изображений не найдено'}, status=status.HTTP_404_NOT_FOUND)
 
     def _has_required_fields(self, picture):
         return all(
