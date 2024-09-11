@@ -92,7 +92,7 @@ class AddTextToGif(APIView):
             picturefull = get_object_or_404(CreatePicture, pk=create_picture_id)
             file_url = self._process_gif(picturefull, user, picturefull.start_frame, picturefull.end_frame)
             if file_url:
-                return JsonResponse({'file_url': file_url},as_attachment=True)
+                return file_url, status.HTTP_200_OK
         elif filters:
             # Используем динамические фильтры
             queryset = CreatePicture.objects.filter(Q(**filters) & Q(is_publish=True), name__icontains='.gif')
@@ -105,7 +105,7 @@ class AddTextToGif(APIView):
                         file_urls.append(file_url)
 
             if file_urls:
-                return JsonResponse({'file_urls': file_urls},as_attachment=True)
+                return JsonResponse({'file_urls': file_urls}, status=status.HTTP_200_OK)
 
         return JsonResponse({'error': 'Изображений не найдено'}, status=status.HTTP_404_NOT_FOUND)
 
@@ -129,7 +129,13 @@ class AddTextToGif(APIView):
             self._add_text_to_gif(gif_path, text, position, start_frame, end_frame, font_size, font_mons, text_color,
                                   temp_file_path)
             file_url = self.request.build_absolute_uri(f'{settings.MEDIA_URL}{output_filename}')
-            return file_url
+
+            # Отправляем файл в ответе HTTP с правильными заголовками
+            response = HttpResponse(open(temp_file_path, 'rb'), content_type='image/gif')
+            response['Content-Disposition'] = f'attachment; filename="{output_filename}"'
+            response['Content-Length'] = os.path.getsize(temp_file_path)
+
+            return response
         except Exception as e:
             return None
 
@@ -179,6 +185,8 @@ class AddTextToGif(APIView):
 
         frames[0].save(output_path, save_all=True, append_images=frames[1:], loop=0)
 
+        return output_path
+
 
 import uuid
 from django.http import JsonResponse
@@ -207,7 +215,7 @@ class AddTextToImageTest(APIView):
             picturefull = get_object_or_404(CreatePicture, pk=create_picture_id)
             file_url = self._process_image(picturefull, user)
             if file_url:
-                return JsonResponse({'file_url': file_url},as_attachment=True)
+                return file_url, status.HTTP_200_OK
         elif filters:
             # Используем динамические фильтры
             queryset = CreatePicture.objects.filter(Q(**filters) & Q(is_publish=True) & ~Q(name__icontains='.gif'))
@@ -220,7 +228,7 @@ class AddTextToImageTest(APIView):
                         file_urls.append(file_url)
 
             if file_urls:
-                return JsonResponse({'file_urls': file_urls},as_attachment=True)
+                return JsonResponse({'file_urls': file_urls}, status=status.HTTP_200_OK)
 
         return JsonResponse({'error': 'Изображений не найдено'}, status=status.HTTP_404_NOT_FOUND)
 
@@ -277,7 +285,13 @@ class AddTextToImageTest(APIView):
 
         # Формируем URL для доступа к файлу
         file_url = self.request.build_absolute_uri(f'{settings.MEDIA_URL}{output_filename}')
-        return file_url
+
+        # Отправляем файл в ответе HTTP с правильными заголовками
+        response = HttpResponse(open(temp_file_path, 'rb'), content_type='image/jpeg')
+        response['Content-Disposition'] = f'attachment; filename="{output_filename}"'
+        response['Content-Length'] = os.path.getsize(temp_file_path)
+
+        return response
 
 
 class GoogleAuth(APIView):
